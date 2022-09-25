@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PDF Doc Scan</string>
+    <string name="error">Error</string>
+    <string name="no">No</string>
+    <string name="yes">Yes</string>
+    <string name="deletus">Delete</string>
+    <string name="delete_all_images">Delete all images?</string>
+    <string name="save_pdf">Save PDF</string>
+    <string name="scan">Scan</string>
+    <string name="normal">Normal</string>
+    <string name="auto">Auto</string>
+    <string name="black_and_white">Black and white</string>
+    <string name="document">Document</string>
+    <string name="today">Today</string>
+    <string name="yesterday">Yesterday</string>
+    <string name="to_delete_pdf">Do you want to delete pdf file?</string>
+    <string name="share">Share</string>
+    <string name="no_pdf_documents">No PDF documents</string>
+
+
+</resources>
