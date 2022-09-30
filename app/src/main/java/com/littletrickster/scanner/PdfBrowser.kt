@@ -164,6 +164,31 @@ private fun PdfLine(file: File, time: LocalTime) {
             IconButton(modifier = Modifier.align(Alignment.CenterVertically), onClick = { contextMenuExpanded = true }) {
 
                 Icon(modifier = Modifier.padding(5.dp), imageVector = Icons.Filled.MoreVert, contentDescription = null)
+                DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
+
+                    DropdownMenuItem(onClick = {
+                        tryingToDelete = true
+                    }, content = {
+                        Text(text = stringResource(id = R.string.deletus))
+                    })
+                    DropdownMenuItem(onClick = {
+
+                        val uri = context.fileProvider(file)
+                        val intent = Intent(Intent.ACTION_SEND)
+
+                        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+//                        intent.putExtra(Intent.EXTRA_TEXT,"FILE")
+                        intent.putExtra(Intent.EXTRA_STREAM, uri)
+                        intent.type = "application/pdf"
+                        context.startActivity(Intent.createChooser(intent, null))
+
+                        contextMenuExpanded = false
+
+
+                    }, content = {
+                        Text(text = stringResource(R.string.share))
+                    })
+                }
             }
 
 
@@ -172,31 +197,7 @@ private fun PdfLine(file: File, time: LocalTime) {
 
 
 
-    DropdownMenu(expanded = contextMenuExpanded, onDismissRequest = { contextMenuExpanded = false }) {
 
-        DropdownMenuItem(onClick = {
-            tryingToDelete = true
-        }, content = {
-            Text(text = stringResource(id = R.string.deletus))
-        })
-        DropdownMenuItem(onClick = {
-
-            val uri = context.fileProvider(file)
-            val intent = Intent(Intent.ACTION_SEND)
-
-            intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-//                        intent.putExtra(Intent.EXTRA_TEXT,"FILE")
-            intent.putExtra(Intent.EXTRA_STREAM, uri)
-            intent.type = "application/pdf"
-            context.startActivity(Intent.createChooser(intent, null))
-
-            contextMenuExpanded = false
-
-
-        }, content = {
-            Text(text = stringResource(R.string.share))
-        })
-    }
     if (tryingToDelete) {
         AlertDialog(onDismissRequest = {
             contextMenuExpanded = false
