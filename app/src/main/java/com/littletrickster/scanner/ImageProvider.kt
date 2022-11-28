@@ -2,7 +2,6 @@ package com.littletrickster.scanner
 
 import android.graphics.*
 import android.os.Build
-import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
@@ -94,8 +93,6 @@ fun MyImage(
     file: File?,
     processing: Boolean = false,
     update: Int = 0
-//    extraRotation: Int = 0
-//    scaleDown: Boolean = false
 ) {
 
 
@@ -131,7 +128,7 @@ fun MyImage(
 
 
         ref.postInvalidate()
-//        }
+
     }
 
 }
@@ -169,6 +166,10 @@ fun MyImage(
 
 }
 
+private val transparentPaint = Paint().apply {
+    color = Color.TRANSPARENT
+}
+
 private fun fullDraw(
     canvas: Canvas,
     view: View,
@@ -176,7 +177,7 @@ private fun fullDraw(
     rotation: Int,
     filter: Boolean = false
 ) {
-    canvas.drawColor(0, PorterDuff.Mode.CLEAR)
+    canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), transparentPaint)
     canvas.rotate(rotation.toFloat(), canvas.width / 2f, canvas.height / 2f)
 
     val bitmapToDraw =
@@ -241,7 +242,6 @@ fun ImagePlayer(
 
     LaunchedEffect(surfaceCreated, surfaceChanged, imageProvider) {
         if (surfaceCreated) {
-            var r = 0.0f
 
             imageProvider.bmpFlow
                 .onEach { (bitmap, rotation) ->
