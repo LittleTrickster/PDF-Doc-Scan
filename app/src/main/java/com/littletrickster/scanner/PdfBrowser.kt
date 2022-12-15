@@ -2,6 +2,9 @@ package com.littletrickster.scanner
 
 import android.app.Activity
 import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.tom_roush.pdfbox.io.IOUtils
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -32,6 +36,23 @@ import java.time.ZoneId
 @Composable
 fun PdfBrowser() {
     val context = LocalContext.current
+
+    var fileToSave: File? by remember { mutableStateOf(null) }
+
+    val saveExternal = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) {
+            val uri = it.data?.data ?: return@rememberLauncherForActivityResult
+            context.contentResolver.openOutputStream(uri)?.use { outStream ->
+                fileToSave?.inputStream()?.use { inStream ->
+//                    Files.copy(file.toPath(), it) // future
+                    IOUtils.copy(inStream, outStream)
+                }
+            }
+            Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show()
+        }
+        fileToSave = null
+    }
+
 
     val pdfFolder = remember {
         context.getPdfFolder()
@@ -85,7 +106,14 @@ fun PdfBrowser() {
             }
 
             items(items = pairs, key = { it.first.name }) { (file, time) ->
-                PdfLine(file, time)
+                PdfLine(file, time, saveExternal = {
+                    fileToSave = it
+                    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                    intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    intent.putExtra(Intent.EXTRA_TITLE, it.name)
+                    intent.type = "application/pdf"
+                    saveExternal.launch(intent)
+                })
             }
         }
     }
@@ -105,15 +133,14 @@ private fun PdfLinePreview() {
 }
 
 @Composable
-private fun PdfLine(file: File, time: LocalTime) {
-    val isPick = LocalIsPick.current
-    val bitmap by if (LocalInspectionMode.current) remember {
-        mutableStateOf(null)
-    }
-    else rememberPdfThumbnail(file)
-
-
+private fun PdfLine(file: File, time: LocalTime, saveExternal: (file: File) -> Unit = {}) {
     val context = LocalContext.current
+
+    val isPick = LocalIsPick.current
+    val bitmap by if (!LocalInspectionMode.current) rememberPdfThumbnail(file)
+    else remember { mutableStateOf(null) }
+
+
     var contextMenuExpanded by remember { mutableStateOf(false) }
 
     var tryingToDelete by remember { mutableStateOf(false) }
@@ -188,6 +215,13 @@ private fun PdfLine(file: File, time: LocalTime) {
                     }, content = {
                         Text(text = stringResource(R.string.share))
                     })
+                    DropdownMenuItem(onClick = {
+                        saveExternal(file)
+                        contextMenuExpanded = false
+                    }, content = {
+                        Text(text = stringResource(R.string.save_to))
+                    })
+
                 }
             }
 
