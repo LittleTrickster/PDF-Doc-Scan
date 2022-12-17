@@ -147,14 +147,8 @@ fun getPoints(original: Mat): List<Point> {
             squares.add(threshSquares[id])
         }
     }
-    val pts = squares[0].toArray()
+    val unsorted = squares[0].toArray()
 
-    val unsorted = listOf(
-        Point(pts[0].x, pts[0].y),
-        Point(pts[1].x, pts[1].y),
-        Point(pts[2].x, pts[2].y),
-        Point(pts[3].x, pts[3].y)
-    )
 
     return getOrderedPoints(unsorted)
 }
@@ -178,15 +172,13 @@ private fun findCannySquares(
         // detection of geometric shapes
         Imgproc.approxPolyDP(contour, approx, Imgproc.arcLength(contour, true) * 0.03, true)
         val approx1f = MatOfPoint()
-        approx1f.fromArray(*approx.toArray())
+        val approxArray = approx.toArray()
+        approx1f.fromArray(*approxArray)
         // detection of quadrilaterals among geometric shapes
-        if (approx.total() == 4L && abs(Imgproc.contourArea(approx)) > scaledWidth / 5 * (scaledHeight / 5) && Imgproc.isContourConvex(
-                approx1f
-            )
-        ) {
+        if (approx.total() == 4L && abs(Imgproc.contourArea(approx)) > scaledWidth / 5 * (scaledHeight / 5) && Imgproc.isContourConvex(approx1f)) {
             var maxCosine = 0.0
             for (j in 2..4) {
-                val cosine = abs(angle(approx.toArray()[j % 4], approx.toArray()[j - 2], approx.toArray()[j - 1]))
+                val cosine = abs(angle(approxArray[j % 4], approxArray[j - 2], approxArray[j - 1]))
                 maxCosine = maxCosine.coerceAtLeast(cosine)
             }
             // selection of quadrilaterals with large enough angles
@@ -214,8 +206,10 @@ private fun findThreshSquares(
         contour.fromArray(*contours[i].toArray())
         // detection of geometric shapes
         Imgproc.approxPolyDP(contour, approx, Imgproc.arcLength(contour, true) * 0.03, true)
+        val approxArray = approx.toArray()
+
         val approx1f = MatOfPoint()
-        approx1f.fromArray(*approx.toArray())
+        approx1f.fromArray(*approxArray)
         // detection of quadrilaterals among geometric shapes
         if (approx.total() == 4L && abs(Imgproc.contourArea(approx)) > scaledWidth / 5 * (scaledHeight / 5) && Imgproc.isContourConvex(
                 approx1f
@@ -223,7 +217,7 @@ private fun findThreshSquares(
         ) {
             var maxCosine = 0.0
             for (j in 2..4) {
-                val cosine = abs(angle(approx.toArray()[j % 4], approx.toArray()[j - 2], approx.toArray()[j - 1]))
+                val cosine = abs(angle(approxArray[j % 4], approxArray[j - 2], approxArray[j - 1]))
                 maxCosine = max(maxCosine, cosine)
             }
             //selection of quadrilaterals with large enough angles
@@ -242,7 +236,7 @@ private fun maxi(indices: List<Int>): Int {
     return max
 }
 
-fun getOrderedPoints(points: List<Point>): List<Point> {
+fun getOrderedPoints(points: Array<Point>): List<Point> {
     val orderedPoints = SparseArray<Point>()
     var gauche1: Point? = null
     var gauche2: Point? = null
