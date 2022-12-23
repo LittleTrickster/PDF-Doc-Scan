@@ -28,8 +28,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -53,10 +51,9 @@ fun PolygonSet(
 
     back?.also { BackHandler(true, it) }
 
-    val imageBounds =  remember(originalBitmap) {
+    val imageBounds = remember(originalBitmap) {
         originalBitmap.getImageBounds(rotation)
     }
-
 
 
     val points = remember(originalBitmap) {
@@ -127,20 +124,15 @@ fun PolygonSet(
                             rotation,
                             Point((imageBounds.rotatedWidth - 1) / 2.0, (imageBounds.rotatedHeight - 1) / 2.0)
                         )
-//                    val finalPoints = cPoints
 
                         val originalMat = Mat()
 
                         Utils.bitmapToMat(originalBitmap, originalMat)
 
                         val unwrappedMat = unwrap(originalMat = originalMat, points = finalPoints)
-
                         originalMat.release()
 
-                        val resized = Mat()
-                        unwrappedMat.resizeMax(resized, 2200.0)
-                        unwrappedMat.release()
-                        resized
+                        unwrappedMat
                     }
 
 

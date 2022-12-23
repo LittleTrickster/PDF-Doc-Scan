@@ -442,18 +442,21 @@ fun unwrap(
     val h2 = sqrt((y1 - y3).pow(2.0) * 2)
 
 
-    val maxWidth = (if (w1 < w2) w1 else w2)
-    val maxHeight = (if (h1 < h2) h1 else h2)
+    val tempWidth = (if (w1 < w2) w1 else w2)
+    val tempHeight = (if (h1 < h2) h1 else h2)
 
+    val (maxWidth, maxHeight) = clampA4(tempWidth.toInt(), tempHeight.toInt())
+//    val maxWidth = tempWidth.toInt()
+//    val maxHeight = tempHeight.toInt()
 
-    val dst = Mat.zeros(maxHeight.toInt(), maxWidth.toInt(), CvType.CV_8UC3)
+    val dst = Mat.zeros(maxHeight, maxWidth, CvType.CV_8UC3)
 
 
     val mDest = MatOfPoint2f(
         Point(0.0, 0.0),
-        Point((maxWidth - 1), 0.0),
-        Point(0.0, (maxHeight - 1)),
-        Point((maxWidth - 1), (maxHeight - 1))
+        Point((maxWidth - 1).toDouble(), 0.0),
+        Point(0.0, (maxHeight - 1).toDouble()),
+        Point((maxWidth - 1).toDouble(), (maxHeight - 1).toDouble())
     )
 
     val pointMat = MatOfPoint2f(
