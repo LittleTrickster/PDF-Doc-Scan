@@ -127,6 +127,36 @@ fun File.toRotatedBitmap(): Bitmap {
 
 }
 
+fun clampA4(width: Int, height: Int): Pair<Int, Int> {
+    val a4 = PDRectangle.A4
+
+    var flip = width > height
+
+    var scaledWidth: Float
+    var scaledHeight: Float
+    if (!flip) {
+        scaledWidth = width.toFloat()
+        scaledHeight = height.toFloat()
+    } else {
+        scaledWidth = height.toFloat()
+        scaledHeight = width.toFloat()
+    }
+
+    if (scaledWidth > a4.width) {
+        val dif = scaledWidth / a4.width
+        scaledHeight /= dif
+        scaledWidth /= dif
+    }
+
+    if (scaledHeight > a4.height) {
+        val dif = scaledHeight / a4.height
+        scaledHeight /= dif
+        scaledWidth /= dif
+    }
+    return if (!flip) Pair(scaledWidth.toInt(), scaledHeight.toInt())
+    else Pair(scaledHeight.toInt(), scaledWidth.toInt())
+}
+
 data class ImageBounds(
     val rotatedWidth: Int, val rotatedHeight: Int, val originalWidth: Int, val originalHeight: Int, val rotation: Int
 ) {
@@ -136,26 +166,7 @@ data class ImageBounds(
     }
 
     fun clampA4(): ImageBounds {
-        val a4 = PDRectangle.A4
-
-        var scaledWidth = originalWidth.toFloat()
-        var scaledHeight = originalHeight.toFloat()
-
-        if (scaledWidth > a4.width) {
-            val dif2 = scaledWidth / a4.width
-            scaledHeight /= dif2
-            scaledWidth /= dif2
-        }
-
-        if (scaledHeight > a4.height) {
-            val dif1 = originalHeight / a4.height
-            scaledHeight = originalHeight / dif1
-            scaledWidth = originalWidth / dif1
-        }
-
-
-        val newOriginalWidth = scaledWidth.toInt()
-        val newOriginalHeight = scaledHeight.toInt()
+        val (newOriginalWidth, newOriginalHeight) = clampA4(originalWidth, originalHeight)
 
         val newRotatedWidth: Int
         val newRotatedHeight: Int
@@ -171,10 +182,14 @@ data class ImageBounds(
             }
         }
         return copy(
-            rotatedHeight = newRotatedHeight, rotatedWidth = newRotatedWidth, originalHeight = newOriginalHeight, originalWidth = newOriginalWidth
+            rotatedHeight = newRotatedHeight,
+            rotatedWidth = newRotatedWidth,
+            originalHeight = newOriginalHeight,
+            originalWidth = newOriginalWidth
         )
     }
 }
+
 
 data class ResizedDimensions(
     val calculatedHeight: Double,
