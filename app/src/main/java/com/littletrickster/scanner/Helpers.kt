@@ -128,7 +128,8 @@ fun File.toRotatedBitmap(): Bitmap {
 }
 
 fun clampA4(width: Int, height: Int): Pair<Int, Int> {
-    val a4 = PDRectangle.A4
+    val a4width = 1240f
+    val a4height = 1754f
 
     var flip = width > height
 
@@ -142,14 +143,14 @@ fun clampA4(width: Int, height: Int): Pair<Int, Int> {
         scaledHeight = width.toFloat()
     }
 
-    if (scaledWidth > a4.width) {
-        val dif = scaledWidth / a4.width
+    if (scaledWidth > a4width) {
+        val dif = scaledWidth / a4width
         scaledHeight /= dif
         scaledWidth /= dif
     }
 
-    if (scaledHeight > a4.height) {
-        val dif = scaledHeight / a4.height
+    if (scaledHeight > a4height) {
+        val dif = scaledHeight / a4height
         scaledHeight /= dif
         scaledWidth /= dif
     }
