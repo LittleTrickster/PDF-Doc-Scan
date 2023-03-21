@@ -3,8 +3,11 @@ package com.littletrickster.scanner
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,10 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,11 +33,6 @@ import androidx.core.content.edit
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.calculateCurrentOffsetForPage
 import com.google.accompanist.pager.rememberPagerState
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.pdmodel.PDPage
-import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
-import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
-import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileNotFoundException
@@ -94,6 +89,53 @@ fun ImageBrowser(back: () -> Unit) {
 
     val activeImageEffectProcessors = remember { mutableStateMapOf<String, Job>() }
 
+
+    val savePDF: (uri: Uri?, fileName: String) -> Unit = remember {
+        { uri, fileName ->
+            loading = true
+
+            scope.launch(Dispatchers.Default) {
+                try {
+                    activeImageEffectProcessors.values.joinAll()
+
+                    val pdfFile = generatePDF(context, mode, pdfFolder, sortedImages, fileName) ?: return@launch
+
+                    images.forEach(File::delete)
+                    unwrapped.forEach(File::delete)
+                    effectFolder.listFiles()!!.forEach(File::delete)
+
+                    withContext(Dispatchers.Main) {
+                        Toast
+                            .makeText(context, "Ok", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                    if (uri != null) {
+                        context.saveToExternal(uri, pdfFile)
+                    } else if (isPick) {
+                        context.fileReturn(pdfFile)
+                    } else {
+                        back()
+                    }
+
+                } finally {
+                    loading = false
+                }
+            }
+
+        }
+    }
+
+    val savePdfAndToExternalLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                val uri = it.data?.data ?: return@rememberLauncherForActivityResult
+                val fileName = it.data?.getStringExtra(Intent.EXTRA_TITLE) ?: "${LocalDateTime.now()}.pdf"
+                savePDF(uri, fileName)
+                Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show()
+            }
+
+        }
+
     val pagerState = rememberPagerState(images.size - 1)
 
     val currentPage = remember(sortedImages, pagerState.currentPage) {
@@ -111,99 +153,26 @@ fun ImageBrowser(back: () -> Unit) {
                 }
             },
             actions = {
-
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-
-
-                    Text(
-                        text = stringResource(R.string.save_pdf), textAlign = TextAlign.Center, modifier = Modifier
-                            .clickable(enabled = !loading) {
-
-                                loading = true
-
-                                scope.launch(Dispatchers.Default) {
-                                    activeImageEffectProcessors.values.joinAll()
-
-                                    val pdfFile = File(pdfFolder, "${LocalDateTime.now()}.pdf")
-                                    PDDocument().use { document ->
-
-                                        val files = sortedImages.map {
-                                            it.getOrCreateEffectImageFile(context, mode)
-                                        }
-
-                                        files.forEach { file ->
-
-                                            val bounds = file.getImageBounds()
-                                            val rotation = bounds.rotation
-
-                                            val a4LikeBounds = bounds.clampA4()
-
-                                            file.inputStream()
-                                                .use { fileStream ->
-                                                    val image = JPEGFactory.createFromStream(document, fileStream)
-
-                                                    val page = PDPage(
-                                                        PDRectangle(
-                                                            a4LikeBounds.originalWidth.toFloat(),
-                                                            a4LikeBounds.originalHeight.toFloat()
-                                                        )
-                                                    )
-                                                    document.addPage(page)
-                                                    page.rotation = rotation
-
-                                                    PDPageContentStream(document, page).use { contentStream ->
-                                                        contentStream.drawImage(
-                                                            image,
-                                                            0f,
-                                                            0f,
-                                                            a4LikeBounds.originalWidth.toFloat(),
-                                                            a4LikeBounds.originalHeight.toFloat()
-                                                        )
-                                                    }
-                                                }
-                                        }
-
-                                        val created = pdfFile.createNewFile()
-                                        if (!created) {
-                                            loading = false
-                                            return@launch
-                                        }
-
-                                        document.save(pdfFile)
-                                    }
-
-                                    images.forEach(File::delete)
-                                    unwrapped.forEach(File::delete)
-                                    effectFolder.listFiles()!!.forEach(File::delete)
-
-                                    withContext(Dispatchers.Main) {
-                                        Toast
-                                            .makeText(context, "Ok", Toast.LENGTH_SHORT)
-                                            .show()
-                                    }
-                                    if (isPick) {
-                                        val uri = context.fileProvider(pdfFile)
-                                        val intent = Intent()
-                                        intent.data = uri
-                                        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                        (context as Activity).apply {
-                                            setResult(Activity.RESULT_OK, intent)
-                                            finish()
-                                        }
-                                    } else {
-                                        back()
-                                    }
-                                    loading = false
-                                }
-
-
-                            }
-                    )
+                if (!isPick) {
+                    IconButton(onClick = {
+                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        intent.putExtra(Intent.EXTRA_TITLE, "${LocalDateTime.now()}.pdf")
+                        intent.type = "application/pdf"
+                        savePdfAndToExternalLauncher.launch(intent)
+                    }) {
+                        Icon(imageVector = Icons.Filled.MoreVert, contentDescription = null)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
                 }
+
+                Text(
+                    text = stringResource(R.string.save_pdf), textAlign = TextAlign.Center, modifier = Modifier
+                        .clickable(enabled = !loading) {
+                            savePDF(null, "${LocalDateTime.now()}.pdf")
+                        }
+                )
+
 
             }
 
@@ -303,17 +272,7 @@ fun ImageBrowser(back: () -> Unit) {
                                 .fillMaxSize()
                                 .clickable {
                                     file?.also { file ->
-
-                                        val uri = context.fileProvider(file)
-                                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                                        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                        context.startActivity(intent)
-
-//                                        val intent = Intent(context, ImageViewerActivity::class.java)
-//                                        intent.putExtra("simple", true)
-//                                        intent.putExtra("url", file.path)
-//                                        context.startActivity(intent)
-
+                                        context.viewFile(file)
                                     }
                                 },
                             file = file,
@@ -529,7 +488,6 @@ private fun ChangingEffect(back: () -> Unit, change: (nr: Int) -> Unit) {
         }
     }
 }
-
 
 @Composable
 fun modeName(mode: Int): String {

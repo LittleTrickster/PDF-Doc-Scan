@@ -1,6 +1,8 @@
 package com.littletrickster.scanner
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -17,7 +19,12 @@ import androidx.core.util.forEach
 import androidx.core.util.size
 import androidx.exifinterface.media.ExifInterface
 import com.google.common.util.concurrent.ListenableFuture
+import com.tom_roush.pdfbox.io.IOUtils
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.PDPage
+import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
+import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -275,10 +282,18 @@ private fun calculateImageBounds(
 ): ImageBounds {
     return if (degrees % 180 == 90) {
         ImageBounds(
-            rotatedWidth = imageHeight, rotatedHeight = imageWidth, originalWidth = imageWidth, originalHeight = imageHeight, rotation = degrees
+            rotatedWidth = imageHeight,
+            rotatedHeight = imageWidth,
+            originalWidth = imageWidth,
+            originalHeight = imageHeight,
+            rotation = degrees
         )
     } else ImageBounds(
-        rotatedWidth = imageWidth, rotatedHeight = imageHeight, originalWidth = imageWidth, originalHeight = imageHeight, rotation = degrees
+        rotatedWidth = imageWidth,
+        rotatedHeight = imageHeight,
+        originalWidth = imageWidth,
+        originalHeight = imageHeight,
+        rotation = degrees
     )
 }
 
@@ -441,6 +456,32 @@ fun Context.fileProvider(file: File): Uri {
     return FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID + ".provider", file)
 }
 
+fun Context.fileReturn(file: File) {
+    val uri = fileProvider(file)
+    val intent = Intent()
+    intent.data = uri
+    intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    (this as Activity).apply {
+        setResult(Activity.RESULT_OK, intent)
+        finish()
+    }
+}
+
+fun Context.viewFile(file: File) {
+    val uri = fileProvider(file)
+    val intent = Intent(Intent.ACTION_VIEW, uri)
+    intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    startActivity(intent)
+}
+
+fun Context.shareFile(file: File, mime: String) {
+    val uri = fileProvider(file)
+    val intent = Intent(Intent.ACTION_SEND)
+    intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+    intent.putExtra(Intent.EXTRA_STREAM, uri)
+    intent.type = mime
+    startActivity(Intent.createChooser(intent, null))
+}
 
 suspend fun File.getOrCreateEffectImageFile(context: Context, mode: Int): File {
     val file = File(context.getEffectImageFolder(), this.name)
@@ -529,6 +570,65 @@ fun <E> SparseArray<E>.toList(): List<E> {
         list.add(value)
     }
     return list
+}
+
+suspend fun generatePDF(context: Context, mode: Int, folderToSave: File, images: List<File>, fileName: String): File? {
+
+    val pdfFile = File(folderToSave, fileName)
+    PDDocument().use { document ->
+
+        val files = images.map {
+            it.getOrCreateEffectImageFile(context, mode)
+        }
+
+        files.forEach { file ->
+
+            val bounds = file.getImageBounds()
+            val rotation = bounds.rotation
+
+            val a4LikeBounds = bounds.clampA4()
+
+            file.inputStream()
+                .use { fileStream ->
+                    val image = JPEGFactory.createFromStream(document, fileStream)
+
+                    val page = PDPage(
+                        PDRectangle(
+                            a4LikeBounds.originalWidth.toFloat(),
+                            a4LikeBounds.originalHeight.toFloat()
+                        )
+                    )
+                    document.addPage(page)
+                    page.rotation = rotation
+
+                    PDPageContentStream(document, page).use { contentStream ->
+                        contentStream.drawImage(
+                            image,
+                            0f,
+                            0f,
+                            a4LikeBounds.originalWidth.toFloat(),
+                            a4LikeBounds.originalHeight.toFloat()
+                        )
+                    }
+                }
+        }
+
+        val created = pdfFile.createNewFile()
+        if (!created) {
+            return null
+        }
+
+        document.save(pdfFile)
+        return pdfFile
+    }
+}
+
+fun Context.saveToExternal(uri: Uri, file: File) {
+    contentResolver.openOutputStream(uri)?.use { outStream ->
+        file.inputStream().use { inStream ->
+            IOUtils.copy(inStream, outStream)
+        }
+    }
 }
 
 fun lerp(start: Float, stop: Float, amount: Float): Float {

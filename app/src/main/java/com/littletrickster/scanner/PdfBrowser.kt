@@ -25,7 +25,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import com.tom_roush.pdfbox.io.IOUtils
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -39,15 +38,10 @@ fun PdfBrowser() {
 
     var fileToSave: File? by remember { mutableStateOf(null) }
 
-    val saveExternal = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
+    val saveExternalLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK) {
             val uri = it.data?.data ?: return@rememberLauncherForActivityResult
-            context.contentResolver.openOutputStream(uri)?.use { outStream ->
-                fileToSave?.inputStream()?.use { inStream ->
-//                    Files.copy(file.toPath(), it) // future
-                    IOUtils.copy(inStream, outStream)
-                }
-            }
+            context.saveToExternal(uri, fileToSave ?: return@rememberLauncherForActivityResult)
             Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show()
         }
         fileToSave = null
@@ -112,7 +106,7 @@ fun PdfBrowser() {
                     intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                     intent.putExtra(Intent.EXTRA_TITLE, it.name)
                     intent.type = "application/pdf"
-                    saveExternal.launch(intent)
+                    saveExternalLauncher.launch(intent)
                 })
             }
         }
@@ -147,20 +141,11 @@ private fun PdfLine(file: File, time: LocalTime, saveExternal: (file: File) -> U
 
     Card(modifier = Modifier
         .clickable {
-            val uri = context.fileProvider(file)
             if (isPick) {
-                val intent = Intent()
-                intent.data = uri
-                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                (context as Activity).apply {
-                    setResult(Activity.RESULT_OK, intent)
-                    finish()
-                }
+                context.fileReturn(file)
 
             } else {
-                val intent = Intent(Intent.ACTION_VIEW, uri)
-                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                context.startActivity(intent)
+                context.viewFile(file)
             }
         }
         .fillMaxWidth()) {
@@ -199,18 +184,8 @@ private fun PdfLine(file: File, time: LocalTime, saveExternal: (file: File) -> U
                         Text(text = stringResource(id = R.string.deletus))
                     })
                     DropdownMenuItem(onClick = {
-
-                        val uri = context.fileProvider(file)
-                        val intent = Intent(Intent.ACTION_SEND)
-
-                        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-//                        intent.putExtra(Intent.EXTRA_TEXT,"FILE")
-                        intent.putExtra(Intent.EXTRA_STREAM, uri)
-                        intent.type = "application/pdf"
-                        context.startActivity(Intent.createChooser(intent, null))
-
+                        context.shareFile(file, "application/pdf")
                         contextMenuExpanded = false
-
 
                     }, content = {
                         Text(text = stringResource(R.string.share))
