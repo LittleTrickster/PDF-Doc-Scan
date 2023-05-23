@@ -360,7 +360,6 @@ fun customImageOwner(enabled: Boolean = true): LifecycleOwner {
 
         object : LifecycleOwner {
             val lifecycleRegistry = LifecycleRegistry(this)
-            override fun getLifecycle() = lifecycleRegistry
 
             private var enabled_: Boolean = enabled
             val observer = LifecycleEventObserver { source, event ->
@@ -387,6 +386,9 @@ fun customImageOwner(enabled: Boolean = true): LifecycleOwner {
             fun removeObserver() {
                 lifecycleOwner.lifecycle.removeObserver(observer)
             }
+
+            override val lifecycle: Lifecycle
+                get() = lifecycleRegistry
 
         }
     }
