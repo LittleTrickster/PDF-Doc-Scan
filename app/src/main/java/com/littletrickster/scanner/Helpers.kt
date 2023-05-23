@@ -515,7 +515,7 @@ suspend fun File.getOrCreateEffectImageFile(context: Context, mode: Int): File {
                 val bwMat = Mat()
                 Imgproc.cvtColor(temp2, bwMat, Imgproc.COLOR_RGB2GRAY)
                 temp2.release()
-                temp2
+                bwMat
             }
             else -> {
                 val final = autoBrightness(mat)

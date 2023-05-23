@@ -53,7 +53,7 @@ fun ImageBrowser(back: () -> Unit) {
     val prefs = rememberScannerSharedPrefs()
     var mode by remember {
         var saved = prefs.getInt("effect_mode", 2)
-        if (saved == 3) saved = 2
+//        if (saved == 3) saved = 2
 
         mutableStateOf(saved)
     }
@@ -98,7 +98,8 @@ fun ImageBrowser(back: () -> Unit) {
                 try {
                     activeImageEffectProcessors.values.joinAll()
 
-                    val pdfFile = generatePDF(context, mode, pdfFolder, sortedImages, fileName) ?: return@launch
+                    val pdfFile = generatePDF(context, mode, pdfFolder, sortedImages, fileName)
+                        ?: return@launch
 
                     images.forEach(File::delete)
                     unwrapped.forEach(File::delete)
@@ -111,6 +112,7 @@ fun ImageBrowser(back: () -> Unit) {
                     }
                     if (uri != null) {
                         context.saveToExternal(uri, pdfFile)
+                        back()
                     } else if (isPick) {
                         context.fileReturn(pdfFile)
                     } else {
@@ -129,9 +131,9 @@ fun ImageBrowser(back: () -> Unit) {
         rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == Activity.RESULT_OK) {
                 val uri = it.data?.data ?: return@rememberLauncherForActivityResult
-                val fileName = it.data?.getStringExtra(Intent.EXTRA_TITLE) ?: "${LocalDateTime.now()}.pdf"
+                val fileName =
+                    it.data?.getStringExtra(Intent.EXTRA_TITLE) ?: "${LocalDateTime.now()}.pdf"
                 savePDF(uri, fileName)
-                Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show()
             }
 
         }
@@ -154,20 +156,32 @@ fun ImageBrowser(back: () -> Unit) {
             },
             actions = {
                 if (!isPick) {
+                    var moreOptionsExpanded by remember { mutableStateOf(false) }
                     IconButton(onClick = {
-                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
-                        intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        intent.putExtra(Intent.EXTRA_TITLE, "${LocalDateTime.now()}.pdf")
-                        intent.type = "application/pdf"
-                        savePdfAndToExternalLauncher.launch(intent)
+                        moreOptionsExpanded = true
                     }) {
                         Icon(imageVector = Icons.Filled.MoreVert, contentDescription = null)
+                        DropdownMenu(expanded = moreOptionsExpanded,
+                            onDismissRequest = { moreOptionsExpanded = false }) {
+                            DropdownMenuItem(onClick = {
+                                val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                intent.putExtra(Intent.EXTRA_TITLE, "${LocalDateTime.now()}.pdf")
+                                intent.type = "application/pdf"
+                                savePdfAndToExternalLauncher.launch(intent)
+                                moreOptionsExpanded = false
+                            }, content = {
+                                Text(text = "Generate and save to external storage")
+                            })
+                        }
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                 }
 
                 Text(
-                    text = stringResource(R.string.save_pdf), textAlign = TextAlign.Center, modifier = Modifier
+                    text = stringResource(R.string.save_pdf),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
                         .clickable(enabled = !loading) {
                             savePDF(null, "${LocalDateTime.now()}.pdf")
                         }
@@ -236,7 +250,8 @@ fun ImageBrowser(back: () -> Unit) {
                                 for (r in 0..3) {
                                     try {
                                         val job = async(Dispatchers.Default) {
-                                            file = imageFile.getOrCreateEffectImageFile(context, mode)
+                                            file =
+                                                imageFile.getOrCreateEffectImageFile(context, mode)
                                         }
                                         activeImageEffectProcessors[imageFile.name] = job
                                         //might throw no such file rare exception
@@ -250,7 +265,11 @@ fun ImageBrowser(back: () -> Unit) {
 
 //                                          CrashWrapper.recordCrash(e)
 
-                                            Toast.makeText(context, context.getString(R.string.error), Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.error),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                             if (unwrappedFolder.listFiles()!!.isEmpty()) {
                                                 back()
                                             }
@@ -280,7 +299,10 @@ fun ImageBrowser(back: () -> Unit) {
                             update = changedRotation + mode
                         )
 
-                        if (file == null || imageLoading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        if (file == null || imageLoading) Box(
+                            Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
                             CircularProgressIndicator()
                         }
 
@@ -435,7 +457,7 @@ fun ImageBrowser(back: () -> Unit) {
         }
     }
 
-    if (changingEffect) ChangingEffect(back = { changingEffect = false }, change = {
+    ChangingEffect(changingEffect, back = { changingEffect = false }, change = {
         changingEffect = false
 
         if (mode != it) {
@@ -463,8 +485,8 @@ fun ImageBrowser(back: () -> Unit) {
 
 
 @Composable
-private fun ChangingEffect(back: () -> Unit, change: (nr: Int) -> Unit) {
-    Dialog(
+private fun ChangingEffect(display: Boolean, back: () -> Unit, change: (nr: Int) -> Unit) {
+    if (display) Dialog(
         onDismissRequest = { back() },
         DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
     ) {
@@ -472,7 +494,7 @@ private fun ChangingEffect(back: () -> Unit, change: (nr: Int) -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             LazyColumn {
-                for (currentMode in 0..2) {
+                for (currentMode in 0..3) {
                     item {
                         Card(modifier = Modifier
                             .fillMaxWidth()
@@ -496,10 +518,12 @@ fun modeName(mode: Int): String {
             stringResource(R.string.normal)
 
         }
+
         1 -> {
             stringResource(R.string.auto)
 
         }
+
         2 -> {
             stringResource(R.string.black_and_white)
         }

@@ -11,7 +11,7 @@
     <string name="normal">Normal</string>
     <string name="auto">Auto</string>
     <string name="black_and_white">Black and white</string>
-    <string name="document">Document</string>
+    <string name="document">Experimental document</string>
     <string name="today">Today</string>
     <string name="yesterday">Yesterday</string>
     <string name="to_delete_pdf">Do you want to delete the pdf file?</string>
