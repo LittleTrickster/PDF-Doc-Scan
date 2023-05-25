@@ -10,13 +10,20 @@ android {
         applicationId "com.littletrickster.scanner"
         minSdk 21
         targetSdk 33
-        versionCode 3
-        versionName "1.02"
+        versionCode 4
+        versionName "1.03"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary true
         }
+        /*
+        //just for arm
+        archivesBaseName = "app-arm"
+        ndk {
+            abiFilters "armeabi-v7a", "arm64-v8a"
+        }
+        */
     }
 
     splits {
