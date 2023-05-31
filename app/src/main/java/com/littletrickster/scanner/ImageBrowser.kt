@@ -30,9 +30,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.edit
-import com.google.accompanist.pager.HorizontalPager
-import com.google.accompanist.pager.calculateCurrentOffsetForPage
-import com.google.accompanist.pager.rememberPagerState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileNotFoundException
@@ -211,7 +210,7 @@ fun ImageBrowser(back: () -> Unit) {
                     },
 //            modifier = Modifier.size(600.dp,300.dp),
                     contentPadding = PaddingValues(all = 20.dp),
-                    count = sortedImages.size
+                    pageCount = sortedImages.size
                 ) { page ->
 
                     val imageFile = sortedImages[page]
@@ -225,7 +224,8 @@ fun ImageBrowser(back: () -> Unit) {
                                 // Calculate the absolute offset for the current page from the
                                 // scroll position. We use the absolute value which allows us to mirror
                                 // any effects for both directions
-                                val pageOffset = calculateCurrentOffsetForPage(page).absoluteValue
+                                val pageOffset =
+                                    ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
 
                                 // We animate the scaleX + scaleY, between 85% and 100%
                                 lerp(0.85f, 1f, 1f - pageOffset.coerceIn(0f, 1f))
