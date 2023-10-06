@@ -6,6 +6,12 @@ Other apps require payment to access their api/sdk or simply don't have a possib
 
 ![Alt text](/misc/vid.gif?raw=true  "Demo video")
 
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png"
+     alt="Get it on IzzyOnDroid"
+     height="80">](https://apt.izzysoft.de/fdroid/index/apk/com.littletrickster.scanner)
+
+or get the APK from the [Releases section](https://github.com/LittleTrickster/PDF-Doc-Scan/releases/latest).
+
 ## Usage Example
 
 Create ActivityResultLauncher
