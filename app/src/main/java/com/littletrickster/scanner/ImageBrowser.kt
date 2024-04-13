@@ -32,6 +32,8 @@ import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.edit
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.RotateRight
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileNotFoundException
@@ -137,7 +139,8 @@ fun ImageBrowser(back: () -> Unit) {
 
         }
 
-    val pagerState = rememberPagerState(images.size - 1)
+    val pagerState =
+        rememberPagerState(initialPage = images.size - 1, pageCount = { sortedImages.size })
 
     val currentPage = remember(sortedImages, pagerState.currentPage) {
         sortedImages.getOrNull(pagerState.currentPage)
@@ -150,7 +153,7 @@ fun ImageBrowser(back: () -> Unit) {
             },
             navigationIcon = {
                 IconButton(onClick = { back() }) {
-                    Icon(Icons.Filled.ArrowBack, null)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                 }
             },
             actions = {
@@ -210,7 +213,6 @@ fun ImageBrowser(back: () -> Unit) {
                     },
 //            modifier = Modifier.size(600.dp,300.dp),
                     contentPadding = PaddingValues(all = 20.dp),
-                    pageCount = sortedImages.size
                 ) { page ->
 
                     val imageFile = sortedImages[page]
@@ -416,7 +418,7 @@ fun ImageBrowser(back: () -> Unit) {
                     }) {
                         Icon(
                             modifier = Modifier.size(24.dp),
-                            imageVector = Icons.Default.RotateRight,
+                            imageVector = Icons.AutoMirrored.Filled.RotateRight,
                             contentDescription = null
                         )
                     }

@@ -97,19 +97,17 @@ fun MyImage(
 
 
     val context = LocalContext.current
-    val file by rememberUpdatedState(file)
 
 
     var bitmapAndRotation by remember { mutableStateOf<Pair<Bitmap, Int>?>(null) }
     var size by remember { mutableStateOf<IntSize?>(null) }
-    val bitmapAndRotationInner by rememberUpdatedState(bitmapAndRotation)
 
 
     val ref = remember {
         object : View(context) {
             override fun onDraw(canvas: Canvas) {
-                val bitmap = bitmapAndRotationInner?.first ?: return
-                fullDraw(canvas, this, bitmap, bitmapAndRotationInner?.second ?: 0, true)
+                val bitmap = bitmapAndRotation?.first ?: return
+                fullDraw(canvas, this, bitmap, bitmapAndRotation?.second ?: 0, true)
             }
         }
     }

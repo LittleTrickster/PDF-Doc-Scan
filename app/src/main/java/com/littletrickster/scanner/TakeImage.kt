@@ -2,10 +2,11 @@ package com.littletrickster.scanner
 
 import android.graphics.Bitmap
 import android.widget.Toast
-import androidx.camera.core.AspectRatio
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateOffsetAsState
@@ -14,13 +15,27 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,7 +63,10 @@ import kotlin.math.roundToInt
 
 
 @Composable
-fun TakeImage(fileReceived: (file: Pair<Bitmap, Int>) -> Unit = {}, showImages: () -> Unit = {}) {
+fun TakeImage(
+    fileReceived: (file: Pair<Bitmap, Int>) -> Unit = {},
+    showImages: () -> Unit = {}
+) {
 
     val context = LocalContext.current
     val prefs = rememberScannerSharedPrefs()
@@ -70,16 +88,17 @@ fun TakeImage(fileReceived: (file: Pair<Bitmap, Int>) -> Unit = {}, showImages: 
     var capturing by remember { mutableStateOf(false) }
 
     val analysisConfig = remember {
-        ImageAnalysis.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3).setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888).build()
+        ImageAnalysis.Builder().setResolutionSelector(defaultResolutionSelector())
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+            .build()
     }
 
     val imageCaptureConfig = remember {
         ImageCapture.Builder()
-//            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-//            .setBufferFormat(ImageFormat.YUV_420_888)
-            .setTargetAspectRatio(AspectRatio.RATIO_4_3).build()
+            .setResolutionSelector(defaultResolutionSelector())
+            .build()
     }
 
     LaunchedEffect(null) {
@@ -94,11 +113,7 @@ fun TakeImage(fileReceived: (file: Pair<Bitmap, Int>) -> Unit = {}, showImages: 
 
         flow.onEach { imageCaptureConfig.flashMode = it }
             .launchIn(this)
-
-
     }
-
-    val tempFolder = remember { context.tempFolder() }
 
     val scope = rememberCoroutineScope()
 
@@ -222,13 +237,19 @@ fun TakeImage(fileReceived: (file: Pair<Bitmap, Int>) -> Unit = {}, showImages: 
                 implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             })
             val preview = remember {
-                val preview: Preview = Preview.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3).build()
+                val preview: Preview = Preview.Builder()
+                    .setResolutionSelector(defaultResolutionSelector())
+                    .build()
 
                 preview.setSurfaceProvider(surfaceProvider)
                 preview
             }
 
-            ImageAnalyser(imageAnalysis = analysisConfig, imageCapture = imageCaptureConfig, preview = preview, analyze = {
+            ImageAnalyser(
+                imageAnalysis = analysisConfig,
+                imageCapture = imageCaptureConfig,
+                preview = preview,
+                analyze = {
                 val mat = it.yuvToMat()
 
                 val resized = Mat()
@@ -297,10 +318,16 @@ private fun SimpleTargetCircle(
             .border(3.dp, circleColor, shape = CircleShape))
 }
 
+fun defaultResolutionSelector() = ResolutionSelector.Builder().apply {
+    setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+}.build()
 
 @androidx.compose.ui.tooling.preview.Preview
 @Composable
-fun CaptureButton(enabled: Boolean = true, click: () -> Unit = {}) {
+fun CaptureButton(
+    enabled: Boolean = true,
+    click: () -> Unit = {}
+) {
     Box(
         modifier = Modifier
             .clickable(enabled = enabled, onClick = click)
