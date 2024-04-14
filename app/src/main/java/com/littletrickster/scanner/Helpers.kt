@@ -138,7 +138,7 @@ fun clampA4(width: Int, height: Int): Pair<Int, Int> {
     val a4width = 1240f
     val a4height = 1754f
 
-    var flip = width > height
+    val flip = width > height
 
     var scaledWidth: Float
     var scaledHeight: Float

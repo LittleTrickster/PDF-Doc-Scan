@@ -14,6 +14,8 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import org.opencv.android.Utils
+import org.opencv.core.Mat
 import java.io.File
 import java.util.*
 
@@ -73,11 +75,18 @@ fun Root() {
                 bitmapAndRotation = null
                 t?.first?.recycle()
             },
-            unwrappedReturn = {
+            setPoints = { points ->
+
                 scope.launch(Dispatchers.IO) {
                     val date = Date().time
 
-                    val unwrappedMat = it()
+                    val originalMat = Mat()
+
+                    Utils.bitmapToMat(finalBitmap, originalMat)
+
+                    val unwrappedMat = unwrap(originalMat = originalMat, points = points)
+                    originalMat.release()
+
                     val unwrappedBitmap = unwrappedMat.toBitmap()
                     unwrappedMat.release()
 

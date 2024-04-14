@@ -45,7 +45,7 @@ fun PolygonSet(
     originalBitmap: Bitmap,
     rotation: Int,
     back: (() -> Unit)? = null,
-    unwrappedReturn: (getUnwrapped: suspend () -> Mat) -> Unit
+    setPoints:  (List<Point>)->Unit
 ) {
     var loading by remember { mutableStateOf(false) }
 
@@ -105,24 +105,15 @@ fun PolygonSet(
 
                     loading = true
 
-                    unwrappedReturn {
+                    val cPoints = offsetPoints.map { it.toCvPoint() }
 
-                        val cPoints = offsetPoints.map { it.toCvPoint() }
+                    val finalPoints = cPoints.rotateReverseCopy(
+                        rotation,
+                        Point((imageBounds.rotatedWidth - 1) / 2.0,
+                            (imageBounds.rotatedHeight - 1) / 2.0)
+                    )
 
-                        val finalPoints = cPoints.rotateReverseCopy(
-                            rotation,
-                            Point((imageBounds.rotatedWidth - 1) / 2.0, (imageBounds.rotatedHeight - 1) / 2.0)
-                        )
-
-                        val originalMat = Mat()
-
-                        Utils.bitmapToMat(originalBitmap, originalMat)
-
-                        val unwrappedMat = unwrap(originalMat = originalMat, points = finalPoints)
-                        originalMat.release()
-
-                        unwrappedMat
-                    }
+                    setPoints(finalPoints)
 
 
                 }) {

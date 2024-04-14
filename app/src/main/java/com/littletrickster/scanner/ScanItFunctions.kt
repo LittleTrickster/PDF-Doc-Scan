@@ -17,7 +17,7 @@ import kotlin.math.sqrt
 /**
  * Returns points in order 0 top left 1 top right 2 bottom right 3 bottom left
  *
- * @param original bw mat
+ * @param original mat
  *
  */
 fun getPoints(original: Mat): List<Point> {
@@ -40,12 +40,12 @@ fun getPoints(original: Mat): List<Point> {
     val cannySquares = SparseArray<MatOfPoint>()
     val indices = ArrayList<Int>()
 
+    val lBlurred = listOf(blurred)
+    val lOutput = listOf(threshOutput)
 
     // value to modify for rectangle search adjustments
     for (c in 0..2) {
 
-        val lBlurred = listOf(blurred)
-        val lOutput = listOf(threshOutput)
         Core.mixChannels(lBlurred, lOutput, MatOfInt(c, 0))
 
         val thresholdLevel = 3
@@ -53,8 +53,7 @@ fun getPoints(original: Mat): List<Point> {
         for (l in 0 until thresholdLevel) {
 
             if (l == 0) {
-                var t = 10
-                while (t <= 60) {
+                for (t in 10..60 step 10) {
                     Imgproc.Canny(threshOutput, srcGray, t.toDouble(), (t * 2).toDouble())
                     Imgproc.dilate(srcGray, srcGray, Mat(), Point(-1.0, -1.0), 2)
                     findCannySquares(
@@ -65,7 +64,6 @@ fun getPoints(original: Mat): List<Point> {
                         (c + t),
                         indices = indices
                     )
-                    t += 10
                 }
 
 
