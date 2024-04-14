@@ -169,7 +169,7 @@ fun PolygonSet(
             offsetPoints.forEachIndexed { index, offsetPoint ->
                 TargetCircle(
                     coordinates = offsetPoint,
-                    setOffset = { offsetPoints[index] = offsetPoint },
+                    setOffset = { offsetPoints[index] = it },
                     horizontalOffset = horizontalOffset,
                     scaledWidth = scaledWidth,
                     verticalOffset = verticalOffset,
@@ -207,7 +207,7 @@ fun PolygonSet(
 @Composable
 private fun TargetCircle(
     coordinates: Offset,
-    setOffset:(Offset)->Unit = {},
+    setOffset: (Offset) -> Unit = {},
     horizontalOffset: Float,
     scaledWidth: Float,
     verticalOffset: Float,
