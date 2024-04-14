@@ -1,13 +1,25 @@
 package com.littletrickster.scanner
 
 import android.util.SparseArray
-import org.opencv.core.*
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
+import org.opencv.core.MatOfInt
+import org.opencv.core.MatOfPoint
+import org.opencv.core.MatOfPoint2f
+import org.opencv.core.Point
 import org.opencv.imgproc.Imgproc
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
 
 
+/**
+ * Returns points in order 0 top left 1 top right 2 bottom right 3 bottom left
+ *
+ * @param original bw mat
+ *
+ */
 fun getPoints(original: Mat): List<Point> {
 
     val width: Double
@@ -269,7 +281,7 @@ fun getOrderedPoints(points: Array<Point>): List<Point> {
         orderedPoints.put(0, gauche1)
         orderedPoints.put(2, gauche2)
     }
-    return orderedPoints.toList()
+    return listOf(orderedPoints[0],orderedPoints[1],orderedPoints[3],orderedPoints[2])
 }
 
 fun angle(pt1: Point, pt2: Point, pt0: Point): Double {

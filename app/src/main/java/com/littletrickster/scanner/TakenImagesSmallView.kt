@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,6 +16,10 @@ import java.io.File
 
 @Composable
 fun TakenImagesSmallView(click: () -> Unit) {
+    if (LocalInspectionMode.current) {
+        Box(modifier = Modifier.size(50.dp))
+        return
+    }
     val context = LocalContext.current
     val imageFolder = remember {
         context.getImageFolder()
@@ -38,7 +43,11 @@ fun TakenImagesSmallView(click: () -> Unit) {
                 .size(50.dp)
                 .clickable(onClick = click)
         ) {
-            MyImage(bitmap = bitmapAndRotation?.first, rotation = bitmapAndRotation?.second ?: 0, filter = true)
+            MyImage(
+                bitmap = bitmapAndRotation?.first,
+                rotation = bitmapAndRotation?.second ?: 0,
+                filter = true
+            )
             Badge(modifier = Modifier.align(Alignment.TopEnd), nr = images.size)
 
         }

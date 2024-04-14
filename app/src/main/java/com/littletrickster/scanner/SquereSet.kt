@@ -57,7 +57,6 @@ fun PolygonSet(
 
 
     val points = remember(originalBitmap) {
-
         val newDimensions = calcResizedDimensions(originalBitmap.height, originalBitmap.width, 500.0)
 
         val scaledBitmap =
@@ -76,20 +75,16 @@ fun PolygonSet(
         points *= scale
 
         points.rotate(rotation, Point((originalBitmap.width - 1) / 2.0, (originalBitmap.height - 1) / 2.0))
-
         points
     }
 
-    // 0 top left
-    // 1 top right
-    // 2 bottom left
-    // 3 bottom right
 
-    val topLeft: MutableState<Offset> = remember { mutableStateOf(points[0].toOffset()) }
-    val topRight: MutableState<Offset> = remember { mutableStateOf(points[1].toOffset()) }
-    val bottomRight: MutableState<Offset> = remember { mutableStateOf(points[3].toOffset()) }
-    val bottomLeft: MutableState<Offset> = remember { mutableStateOf(points[2].toOffset()) }
 
+
+
+    val offsetPoints = remember {
+        mutableStateListOf(*Array(points.size){points[it].toOffset()})
+    }
 
 
 
@@ -112,13 +107,7 @@ fun PolygonSet(
 
                     unwrappedReturn {
 
-                        val cPoints =
-                            listOf(
-                                bottomRight.value.toCvPoint(),
-                                topLeft.value.toCvPoint(),
-                                bottomLeft.value.toCvPoint(),
-                                topRight.value.toCvPoint()
-                            )
+                        val cPoints = offsetPoints.map { it.toCvPoint() }
 
                         val finalPoints = cPoints.rotateReverseCopy(
                             rotation,
@@ -177,45 +166,36 @@ fun PolygonSet(
             MyImage(modifier = Modifier.fillMaxSize(), originalBitmap, rotation = rotation, filter = true)
 
 
-            TargetCircle(topLeft, horizontalOffset, scaledWidth, verticalOffset, scaledHeight, mScale)
-            TargetCircle(topRight, horizontalOffset, scaledWidth, verticalOffset, scaledHeight, mScale)
-            TargetCircle(bottomRight, horizontalOffset, scaledWidth, verticalOffset, scaledHeight, mScale)
-            TargetCircle(bottomLeft, horizontalOffset, scaledWidth, verticalOffset, scaledHeight, mScale)
-
+            offsetPoints.forEachIndexed { index, offsetPoint ->
+                TargetCircle(
+                    coordinates = offsetPoint,
+                    setOffset = { offsetPoints[index] = offsetPoint },
+                    horizontalOffset = horizontalOffset,
+                    scaledWidth = scaledWidth,
+                    verticalOffset = verticalOffset,
+                    scaledHeight = scaledHeight,
+                    scale = mScale
+                )
+            }
 
             Canvas(
                 modifier = Modifier.fillMaxSize()
             ) {
-                drawLine(
-                    color = Color.Green,
-                    strokeWidth = Stroke.DefaultMiter * 2,
-                    cap = StrokeCap.Round,
-                    start = topLeft.value * mScale + offset,
-                    end = topRight.value * mScale + offset
-                )
-                drawLine(
-                    color = Color.Green,
-                    strokeWidth = Stroke.DefaultMiter * 2,
-                    cap = StrokeCap.Round,
-                    start = topRight.value * mScale + offset,
-                    end = bottomRight.value * mScale + offset
-                )
-                drawLine(
-                    color = Color.Green,
-                    strokeWidth = Stroke.DefaultMiter * 2,
-                    cap = StrokeCap.Round,
-                    start = bottomRight.value * mScale + offset,
-                    end = bottomLeft.value * mScale + offset
-                )
-                drawLine(
-                    color = Color.Green,
-                    strokeWidth = Stroke.DefaultMiter * 2,
-                    cap = StrokeCap.Round,
-                    start = bottomLeft.value * mScale + offset,
-                    end = topLeft.value * mScale + offset
-                )
-            }
 
+                for (i in offsetPoints.indices) {
+                    val currentOffset  = offsetPoints[i]
+                    val nextOffset = offsetPoints[(i + 1) % points.size]
+
+                    drawLine(
+                        color = Color.Green,
+                        strokeWidth = Stroke.DefaultMiter * 2,
+                        cap = StrokeCap.Round,
+                        start = currentOffset * mScale + offset,
+                        end = nextOffset * mScale + offset
+                    )
+
+                }
+            }
         }
 
 
@@ -226,7 +206,8 @@ fun PolygonSet(
 
 @Composable
 private fun TargetCircle(
-    coordinates: MutableState<Offset>,
+    coordinates: Offset,
+    setOffset:(Offset)->Unit = {},
     horizontalOffset: Float,
     scaledWidth: Float,
     verticalOffset: Float,
@@ -234,7 +215,6 @@ private fun TargetCircle(
     scale: Float,
     circleColor: Color = Color.Green,
 ) {
-    var coordinates by coordinates
 
     var temp by remember { mutableStateOf(Offset(1f, 1f)) }
 
@@ -268,7 +248,7 @@ private fun TargetCircle(
                             viewY < verticalOffset -> return@detectDragGestures
                             viewY > verticalOffset + scaledHeight -> return@detectDragGestures
                         }
-                        coordinates = Offset(nextX, nextY)
+                        setOffset(Offset(nextX, nextY))
                     },
 //                    onDragEnd = { temp = coordinates }
                 )

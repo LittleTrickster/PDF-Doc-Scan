@@ -2,28 +2,30 @@ package com.littletrickster.scanner
 
 import android.graphics.Bitmap
 import android.widget.Toast
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateOffsetAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
@@ -38,17 +40,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Dimension
 import androidx.core.content.edit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.drop
@@ -56,10 +56,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.opencv.core.Mat
-import org.opencv.core.Point
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 
 @Composable
@@ -67,7 +63,6 @@ fun TakeImage(
     fileReceived: (file: Pair<Bitmap, Int>) -> Unit = {},
     showImages: () -> Unit = {}
 ) {
-
     val context = LocalContext.current
     val prefs = rememberScannerSharedPrefs()
 
@@ -75,24 +70,8 @@ fun TakeImage(
         mutableStateOf(prefs.getInt("flash_mode", ImageCapture.FLASH_MODE_AUTO))
     }
 
-    var imageWidth by remember { mutableStateOf(1) }
-    var imageHeight by remember { mutableStateOf(1) }
-
-    var points by remember { mutableStateOf(emptyList<Point>()) }
-
-
-    val flashAuto = rememberVectorPainter(Icons.Filled.FlashAuto)
-    val flashOff = rememberVectorPainter(Icons.Filled.FlashOff)
-    val flashOn = rememberVectorPainter(Icons.Filled.FlashOn)
-
     var capturing by remember { mutableStateOf(false) }
 
-    val analysisConfig = remember {
-        ImageAnalysis.Builder().setResolutionSelector(defaultResolutionSelector())
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-            .build()
-    }
 
     val imageCaptureConfig = remember {
         ImageCapture.Builder()
@@ -119,222 +98,189 @@ fun TakeImage(
 
 
 
-    ConstraintLayout(modifier = Modifier.fillMaxSize()) {
-        val (topBar, videoPreview, bottomBar) = createRefs()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        PointPreview(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            imageCaptureConfig = imageCaptureConfig
+        )
 
-        var parentSize by remember { mutableStateOf(IntSize(1, 1)) }
-
-
-        val mScale = remember(parentSize, imageWidth, imageHeight) {
-            min(
-                parentSize.height.toFloat() / imageHeight.toFloat(), parentSize.width.toFloat() / imageWidth.toFloat()
-            )
-        }
-
-        val scaledWidth = remember(mScale, imageWidth) {
-            imageWidth * mScale
-        }
-
-        val scaledHeight = remember(mScale, imageHeight) {
-            imageHeight * mScale
-        }
-
-
-        val verticalOffset = remember(scaledHeight, parentSize) { (parentSize.height - scaledHeight) / 2 }
-        val horizontalOffset = remember(scaledWidth, parentSize) { (parentSize.width - scaledWidth) / 2 }
-
-
-
-        Box(modifier = Modifier
-            .height(100.dp)
-
-            .constrainAs(bottomBar) {
-                start.linkTo(parent.start)
-                bottom.linkTo(parent.bottom)
-                end.linkTo(parent.end)
-            }) {
-
-            Row(
-                modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Box(modifier = Modifier.size(50.dp)) {
-
-                }
-                Box(modifier = Modifier.size(50.dp)) {
-
-                }
-
-                CaptureButton(enabled = !capturing) {
-                    if (!capturing) {
-                        capturing = true
-                        scope.launch(Dispatchers.IO) {
-                            try {
+        BottomBar(modifier = Modifier.fillMaxWidth(),
+            capturing = capturing,
+            captureClick = {
+                if (capturing) return@BottomBar
+                capturing = true
+                scope.launch(Dispatchers.IO) {
+                    try {
 
 //                                val file = imageCaptureConfig.takePicture(tempFolder, "temp-image.jpg")
-                                val image = imageCaptureConfig.getImage()
-                                val bitmap = image.captureBitmap()
-                                val rotation = image.imageInfo.rotationDegrees
-                                image.close()
+                        val image = imageCaptureConfig.getImage()
+                        val bitmap = image.captureBitmap()
+                        val rotation = image.imageInfo.rotationDegrees
+                        image.close()
 
-                                fileReceived(bitmap to rotation)
+                        fileReceived(bitmap to rotation)
 
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            } finally {
-                                capturing = false
-                            }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(context, "${e.message}", Toast.LENGTH_SHORT).show()
                         }
+                    } finally {
+                        capturing = false
                     }
-
                 }
 
-
-                val currentPainter = when (currentFlashMode) {
-                    ImageCapture.FLASH_MODE_AUTO -> flashAuto
-                    ImageCapture.FLASH_MODE_OFF -> flashOff
-                    else -> flashOn
+            }, currentFlashMode = currentFlashMode,
+            modeClick = {
+                val nextMode = when (currentFlashMode) {
+                    ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_AUTO
+                    ImageCapture.FLASH_MODE_AUTO -> ImageCapture.FLASH_MODE_ON
+                    else -> ImageCapture.FLASH_MODE_OFF
                 }
-
-                Image(painter = currentPainter, "flash",
-                    Modifier
-                        .clickable {
-                            val nextMode = when (currentFlashMode) {
-                                ImageCapture.FLASH_MODE_OFF -> ImageCapture.FLASH_MODE_AUTO
-                                ImageCapture.FLASH_MODE_AUTO -> ImageCapture.FLASH_MODE_ON
-                                else -> ImageCapture.FLASH_MODE_OFF
-                            }
-                            currentFlashMode = nextMode
-
-
-                        }
-                        .padding(15.dp), colorFilter = ColorFilter.tint(Color.White)
-
-                )
-
-                TakenImagesSmallView(click = { showImages() })
-
-            }
-
-        }
-
-
-
-        Box(modifier = Modifier
-            .constrainAs(videoPreview) {
-                top.linkTo(parent.top)
-                start.linkTo(parent.start)
-                end.linkTo(parent.end)
-                bottom.linkTo(bottomBar.top)
-                height = Dimension.fillToConstraints
-            }
-            .onSizeChanged { parentSize = it }) {
-
-            val surfaceProvider = previewView(modifier = Modifier.fillMaxSize(), builder = {
-                scaleType = PreviewView.ScaleType.FIT_CENTER
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-            })
-            val preview = remember {
-                val preview: Preview = Preview.Builder()
-                    .setResolutionSelector(defaultResolutionSelector())
-                    .build()
-
-                preview.setSurfaceProvider(surfaceProvider)
-                preview
-            }
-
-            ImageAnalyser(
-                imageAnalysis = analysisConfig,
-                imageCapture = imageCaptureConfig,
-                preview = preview,
-                analyze = {
-                val mat = it.yuvToMat()
-
-                val resized = Mat()
-                val scale = mat.resizeMax(resized, 300.0)
-                mat.release()
-                val foundPoints = getPoints(resized)
-                foundPoints.rotate(it.imageInfo.rotationDegrees, Point(resized.width() / 2.0, resized.height() / 2.0))
-
-                resized.release()
-
-                foundPoints *= scale
-
-
-                imageWidth = it.rotatedWidth()
-                imageHeight = it.rotatedHeight()
-                points = foundPoints
-            })
-
-            repeat(4) {
-                SimpleTargetCircle(
-                    getOffset = { points.getOrNull(it)?.toOffset() },
-                    horizontalOffset = horizontalOffset,
-                    verticalOffset = verticalOffset,
-                    scale = mScale
-                )
-            }
-
-        }
-
+                currentFlashMode = nextMode
+            },
+            imageClick = { showImages() }
+        )
     }
 
 }
 
 
-val offsetAnim = tween<Offset>(durationMillis = 220, easing = LinearEasing)
-
+@Preview
 @Composable
-private fun SimpleTargetCircle(
-    getOffset: () -> Offset?,
-    horizontalOffset: Float,
-    verticalOffset: Float,
-    scale: Float,
-    circleColor: Color = Color.Green,
+fun BottomBar(
+    modifier: Modifier = Modifier,
+    capturing: Boolean = false,
+    captureClick: () -> Unit = {},
+    currentFlashMode: Int = ImageCapture.FLASH_MODE_AUTO,
+    modeClick: () -> Unit = {},
+    imageClick: () -> Unit = {}
 ) {
 
-    val offset = getOffset() ?: return
-
-
-    val animatedOffset by animateOffsetAsState(
-        targetValue = offset,
-        animationSpec = offsetAnim
-    )
-
-
     Box(
-        Modifier
-            .offset {
-                IntOffset(
-                    (horizontalOffset + animatedOffset.x * scale - 20.dp.toPx()).roundToInt(),
-                    (verticalOffset + animatedOffset.y * scale - 20.dp.toPx()).roundToInt()
-                )
+        modifier = Modifier
+            .height(100.dp)
+            .then(modifier)
+    ) {
+
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Box(modifier = Modifier.size(50.dp)) {
+
+            }
+            Box(modifier = Modifier.size(50.dp)) {
+
             }
 
-            .background(Color(255, 255, 255, 40), shape = CircleShape)
-            .size(37.dp)
-            .border(3.dp, circleColor, shape = CircleShape))
+            CaptureButton(enabled = !capturing) {
+                captureClick()
+            }
+
+            val flashAuto = rememberVectorPainter(Icons.Filled.FlashAuto)
+            val flashOff = rememberVectorPainter(Icons.Filled.FlashOff)
+            val flashOn = rememberVectorPainter(Icons.Filled.FlashOn)
+
+
+            val currentPainter = when (currentFlashMode) {
+                ImageCapture.FLASH_MODE_AUTO -> flashAuto
+                ImageCapture.FLASH_MODE_OFF -> flashOff
+                else -> flashOn
+            }
+
+            Image(painter = currentPainter, "flash",
+                Modifier
+                    .clickable {
+                        modeClick()
+                    }
+                    .padding(15.dp),
+                colorFilter = ColorFilter.tint(Color.White)
+            )
+
+            TakenImagesSmallView(click = { imageClick() })
+
+        }
+
+    }
 }
+
+
+val offsetAnim = tween<Offset>(durationMillis = 220, easing = LinearEasing)
+
 
 fun defaultResolutionSelector() = ResolutionSelector.Builder().apply {
     setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
 }.build()
 
-@androidx.compose.ui.tooling.preview.Preview
+
+@Preview
+@Composable
+fun CaptureButtonPreview(
+) {
+    var enabled by remember { mutableStateOf(true) }
+    CaptureButton(enabled) { enabled = !enabled }
+}
+
+
 @Composable
 fun CaptureButton(
     enabled: Boolean = true,
     click: () -> Unit = {}
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    val clicked by interactionSource.collectIsPressedAsState()
+
+    val delta by animateDpAsState(
+        targetValue = if (clicked) 20.dp else 0.dp,
+        animationSpec = tween(durationMillis = 220, easing = LinearEasing)
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0f,
+        animationSpec = tween(durationMillis = 220, easing = LinearEasing)
+    )
+
+
+
     Box(
         modifier = Modifier
-            .clickable(enabled = enabled, onClick = click)
+            .clickable(
+                enabled = enabled,
+                onClick = click,
+                interactionSource = interactionSource,
+                indication = null
+            )
             .padding(2.dp)
             .border(2.dp, Color.White, CircleShape) // inner border
-            .padding(6.dp) // padding
-            .size(50.dp)
-            .background(Color.White, CircleShape)
-    )
+            .padding(6.dp + delta / 2) // padding
+
+    ) {
+
+        if (!enabled) {
+            CircularProgressIndicator(
+                Modifier
+                    .alpha(1f - alpha)
+                    .size(50.dp - delta),
+//                color = Color.Black,
+                strokeCap = StrokeCap.Round
+            )
+        }
+
+        Box(
+            Modifier
+                .alpha(alpha)
+                .size(50.dp - delta)
+                .background(Color.White, CircleShape)
+
+        )
+
+
+    }
 }

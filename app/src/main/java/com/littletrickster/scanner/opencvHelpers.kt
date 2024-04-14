@@ -161,7 +161,11 @@ fun Mat.toImageBitmap() = toBitmap().asImageBitmap()
 fun Mat.resizeMax(dest: Mat, maxDimension: Double): Double {
 
     val newDimensions =
-        calcResizedDimensions(originalHeight = this.rows(), originalWidth = this.cols(), maxDimension = maxDimension)
+        calcResizedDimensions(
+            originalHeight = this.rows(),
+            originalWidth = this.cols(),
+            maxDimension = maxDimension
+        )
 
     Imgproc.resize(this, dest, Size(newDimensions.calculatedWidth, newDimensions.calculatedHeight))
     return newDimensions.scale
@@ -195,7 +199,8 @@ fun reverseDegrees(degrees: Int): Int {
 fun List<Point>.rotateCopy(rotation: Int, point: Point) = map(Point::clone).rotate(rotation, point)
 
 
-fun List<Point>.rotateReverseCopy(rotation: Int, point: Point) = rotateCopy(reverseDegrees(rotation), point)
+fun List<Point>.rotateReverseCopy(rotation: Int, point: Point) =
+    rotateCopy(reverseDegrees(rotation), point)
 
 
 fun List<Point>.rotateReverse(rotation: Int, point: Point) = rotate(reverseDegrees(rotation), point)
@@ -413,8 +418,15 @@ fun documentMat(original: Mat): Mat {
 
 
 fun unwrap(originalMat: Mat, points: List<Point>, scale: Double = 1.0): Mat {
-    val (bottomRight, topLeft, bottomLeft, topRight) = points
-    return unwrap(originalMat, topLeft, topRight, bottomLeft, bottomRight, scale)
+    val (topLeft, topRight, bottomRight, bottomLeft) = points
+    return unwrap(
+        originalMat = originalMat,
+        topLeft = topLeft,
+        topRight = topRight,
+        bottomLeft = bottomLeft,
+        bottomRight = bottomRight,
+        scale = scale
+    )
 }
 
 fun unwrap(

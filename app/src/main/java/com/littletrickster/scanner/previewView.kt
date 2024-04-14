@@ -10,7 +10,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 
 @Composable
-fun previewView(modifier: Modifier = Modifier, builder: PreviewView.() -> Unit = {}): Preview.SurfaceProvider {
+fun previewView(
+    modifier: Modifier = Modifier,
+    builder: PreviewView.() -> Unit = {}
+): Preview.SurfaceProvider {
     val context = LocalContext.current
     val view = remember { PreviewView(context) }
     val surfaceProvider = remember { view.surfaceProvider }
