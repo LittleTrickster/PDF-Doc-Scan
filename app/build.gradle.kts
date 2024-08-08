@@ -21,18 +21,62 @@ android {
             useSupportLibrary = true
         }
 
-/*        //just for arm
-        setProperty("archivesBaseName", "app-arm")
-        ndk {
-            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
-        }*/
+        // example usage
+        // gradlew -PsingleAbi="arm" assembleRelease
+
+        when (project.properties["singleAbi"]) {
+
+
+            "arm" -> {
+                setProperty("archivesBaseName", "app-arm")
+                ndk {
+                    abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+                }
+            }
+
+
+            "x86" -> {
+                setProperty("archivesBaseName", "app-x86")
+                ndk {
+                    abiFilters.addAll(listOf("x86"))
+                }
+            }
+
+            "x86_64" -> {
+                setProperty("archivesBaseName", "app-x86_64")
+                ndk {
+                    abiFilters.addAll(listOf("x86_64"))
+                }
+            }
+
+            "arm64-v8a" -> {
+                setProperty("archivesBaseName", "app-arm64-v8a")
+                ndk {
+                    abiFilters.addAll(listOf("arm64-v8a"))
+                }
+            }
+
+            "armeabi-v7a" -> {
+                setProperty("archivesBaseName", "app-armeabi-v7a")
+                ndk {
+                    abiFilters.addAll(listOf("armeabi-v7a"))
+                }
+            }
+
+            "universal" -> {
+                setProperty("archivesBaseName", "app-universal")
+                ndk {
+                    abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86"))
+                }
+            }
+        }
 
     }
 
     splits {
         abi {
 
-            isEnable = true
+            isEnable = project.properties["singleAbi"] == null
 
             reset()
 
